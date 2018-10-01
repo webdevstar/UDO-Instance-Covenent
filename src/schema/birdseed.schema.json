@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://interbit.io/birdseed.schema.json",
+  "title": "Bird Seed",
+  "description": "An ACME products 10kg pile of bird seed",
+  "type": "object",
+  "properties": {
+    "reasonForPurchase": {
+      "description": "Customer's reason for purchasing. We need to ensure it is not used for nefarious purposes based on a previous incident.",
+      "type": "string"
+    }
+  },
+  "required": [ "reasonForPurchase" ]
+}

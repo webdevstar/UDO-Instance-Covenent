@@ -1,0 +1,58 @@
+{
+  "name": "interbit-harness",
+  "version": "0.0.1",
+  "description": "The interbit core test harness",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "webpack && npm run test:obfuscated",
+    "format": "eslint --fix packages",
+    "test": "./node_modules/mocha/bin/_mocha --recursive test",
+    "test:watch": "./node_modules/mocha/bin/_mocha --watch --recursive test",
+    "test:obfuscated": "COVENANT_PATH=\"../dist/bundle.js\" npm t"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/interbit-core/interbit-harness.git"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/interbit-core/interbit-harness/issues"
+  },
+  "homepage": "https://github.com/interbit-core/interbit-harness#readme",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.3",
+    "babel-loader": "^7.1.5",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-preset-env": "^1.7.0",
+    "eslint": "^5.4.0",
+    "eslint-config-prettier": "^2.9.0",
+    "eslint-config-prettier-standard": "^2.0.0",
+    "eslint-config-standard": "^11.0.0",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-node": "^7.0.1",
+    "eslint-plugin-prettier": "^2.6.2",
+    "eslint-plugin-promise": "^4.0.0",
+    "eslint-plugin-standard": "^4.0.0",
+    "mocha": "^5.2.0",
+    "prettier": "^1.14.2",
+    "webpack": "^4.18.0",
+    "webpack-cli": "^3.1.0",
+    "webpack-obfuscator": "^0.18.0"
+  },
+  "dependencies": {
+    "node-object-hash": "^1.4.1",
+    "redux-saga": "^0.16.0",
+    "seamless-immutable": "^7.1.4"
+  },
+  "standard": {
+    "globals": [
+      "describe",
+      "beforeEach",
+      "afterEach",
+      "it"
+    ]
+  }
+}

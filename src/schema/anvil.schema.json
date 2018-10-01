@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://interbit.io/anvil.schema.json",
+  "title": "Anvil",
+  "description": "An ACME products Anvil order specfication",
+  "type": "object",
+  "properties": {
+    "serialNumber": {
+      "description": "The serial number of the anvil",
+      "type": "string",
+      "pattern": "^[A-Z0-9]{10}$"
+    },
+    "weightKgs": {
+      "description": "The weight of the anvil, in kilograms",
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "material": {
+      "description": "The material the anvil is made from",
+      "type": "object",
+      "properties": {
+        "materialQuality": {
+          "description": "The ACME quality index of the material",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "materialType": {
+          "type": "string",
+          "enum": [
+            "steel",
+            "iron",
+            "rubber"
+          ]
+        }
+      },
+      "required": [ "materialQuality", "materialType" ]
+    }
+  },
+  "required": [ "weightKgs", "material" ]
+}
