@@ -147,7 +147,9 @@ const updateStatus = (state, payload) => {
   else if(!currentStatus || payload.data){
     currentStatus = statusTypes.USER_RECONCILED
   }
+
   //other status code...
+  return currentStatus
 }
 
 const reducer = (state = initialState, action) => {
@@ -183,7 +185,8 @@ const reducer = (state = initialState, action) => {
     }
 
     case types.CHECK_STATUS: {
-      return updateStatus(state, action.payload)
+      const status = updateStatus(state, action.payload)
+      return state.update('status', status)
     }
 
     default:
