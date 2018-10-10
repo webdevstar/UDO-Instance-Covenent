@@ -12,7 +12,7 @@ const udoValidate = (udo, schema) => {
 				break;
 			}
 		})
-		st++;
+		st++; 
 	}
 	return beInclude
 }

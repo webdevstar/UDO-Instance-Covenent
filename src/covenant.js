@@ -4,6 +4,7 @@ const path = require('path')
 const { interbitTypes, redispatch } = require('../test/harness')
 const getSchema = require('./schema/getSchema')
 const udoValidate = require('./schema/udoValidate')
+const udoValidate = require('./schema/udoReconcile')
 
 const types = {
     PROPOSE: 'PROPOSE',
