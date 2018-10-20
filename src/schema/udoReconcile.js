@@ -16,7 +16,7 @@ const udoReconcile = (udo, criteria) => {
 		
 		var item = nested.shift();
 		var criData = item.criData;
-		var cmpdata = item.cmpData;
+		var cmpData = item.cmpData;
 		
 		for (var key in criData) {
 			if (cmpData.hasOwnProperty(key)) {
@@ -36,4 +36,5 @@ const udoReconcile = (udo, criteria) => {
 	var result = { reconciled: reconciled, reason: reason};
 	return result
 }
+
 module.exports = udoReconcile
