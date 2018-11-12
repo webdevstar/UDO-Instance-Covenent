@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://interbit.io/birdseed.schema.json",
+  "title": "Bird Seed",
+  "description": "An ACME products 10kg pile of bird seed",
+  "type": "object",
+  "properties": {
+    "aaa": {
+      "description": "Customer's reason for purchasing. We need to ensure it is not used for nefarious purposes based on a previous incident.",
+      "type": "string"
+    },
+    "bbb": {
+      "description": "Customer's reason for purchasing. We need to ensure it is not used for nefarious purposes based on a previous incident.",
+      "type": "string"
+    },
+    "ccc": {
+      "description": "Customer's reason for purchasing. We need to ensure it is not used for nefarious purposes based on a previous incident.",
+      "type": "array",
+      "maxItems": 6,
+      "minItems": 1,
+      "items": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "string",
+          "enum": ["Street", "Avenue", "Boulevard"]
+        },
+        {
+          "type": "array"
+        },
+        {
+          "type": "object",
+          "properties":{
+            "person":{
+              "type":"object",
+              "properties":{
+                "name":{
+                  "type": "string"
+                },
+                "age": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "additionalItems": { "type": "number" },
+      "uniqueItems": true,
+      "contains": { "type": "array" }
+    },
+    "ddd":{
+      "type": "object",
+      "maxProperties": 5,
+      "properties": {
+        "name":{
+          "type":"string"
+        },
+        "gender":{
+          "type":"string"
+        }
+      },
+      "patternProperties": {
+        "^ag": { "type": "number" }
+      },
+      "additionalProperties": { "type": "number" },
+      "dependencies": {
+        "name": {
+          "properties": {
+            "gender": { "type": "string" }
+          },
+          "required": ["gender"]
+        }
+      },
+      "propertyNames": {
+        "maxLength": 7
+      }
+    },
+    "eee":{
+      "oneOf": [
+        {
+          "properties": {
+            "eeeA": {"type": "string"},
+            "eeeB": {"type": "number"}
+          },
+          "required": ["eeeA"]
+        }
+      ],
+      "if":{
+        "type":"object"
+      },
+      "then":{
+        "properties":{
+          "eeeA":{
+            "type":"string"
+          }
+        }
+      }
+    }
+  },
+  "required": [ "aaa" ]
+}
