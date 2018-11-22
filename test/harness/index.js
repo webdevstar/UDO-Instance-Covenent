@@ -9,6 +9,7 @@ const createHarness = covenant => {
   const liftedReducer = interbitReducer(covenant.reducer)
   const harness = createHarnessBase({
     reducer: liftedReducer,
+    rootSaga: covenant.rootSaga
   })
   const mixinHarness = mixin(actionScript, base)(harness)
   mixinHarness.dispatch(actions.init())

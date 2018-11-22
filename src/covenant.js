@@ -1,11 +1,10 @@
 const Immutable = require('seamless-immutable')
-const _ = require('lodash');
-const fs = require('fs')
-const path = require('path')
-const { interbitTypes, redispatch } = require('../test/harness')
+const _ = require('lodash')
+const { createStore } = require('redux')
 const getSchema = require('./schema/getSchema')
 const udoReconcile = require('./schema/udoReconcile')
 const udoValidate = require('./schema/udoValidate')
+const udoInstanceManager = require('./udoInstanceManager')
 
 const actionTypes = {
   INITIALIZE: 'INITIALIZE',
@@ -13,9 +12,9 @@ const actionTypes = {
   APPROVE: 'APPROVE',
   ABANDON: 'ABANDON',
   UNMATCH: 'UNMATCH',
-  RESUBMIT_UDO_DATA: 'RESUBMIT_UDO_DATA'
+  RESUBMIT_UDO_DATA: 'RESUBMIT_UDO_DATA',
+  DESTROY_CHAIN: 'DESTROY_CHAIN'
 }
-
 const statusTypes = {
   PENDING: 'PENDING',
   AUTO_RECONCILED: 'AUTO_RECONCILED',
@@ -42,22 +41,10 @@ const actions = {
     type: actionTypes.ABANDON,
     payload: value
   }),
-  unmatch: value => ({
+  unmatch: () => ({
     type: actionTypes.UNMATCH
-  }),
-  resubmit: value => ({
-    type: actionTypes.RESUBMIT_UDO_DATA
   })
 }
-
-const initialState = Immutable.from({
-  parties: {},
-  expectedParties: [],
-  status: '',
-  unreconciled: {},
-  versions: 0,
-})
-
 const selectors = {
   getUdo: (state) => {
     // Gets the UDO instance.
@@ -72,14 +59,17 @@ const selectors = {
     return
   },
   getStatus: (state) => {
-    return state.get('status')
+    return state.getIn(['status'])
   },
   getParties: (state) => {
-    return state.get('parties')
+    return state.getIn(['parties'])
   },
-  getDataListForParty: (state) => {
-    // Gets the data for a specified party in an array.
-    return
+  getDataListForParty: (state, parties) => {
+    let partiesData = parties
+    parties.forEach((party) => {
+      partiesData[party] = state.getIn(['parties', party])
+    })
+    return partiesData
   },
   getLatestDataForParty: (state) => {
     // Gets the most recent version of the UDO data for the party.
@@ -130,76 +120,55 @@ const selectors = {
     return
   },
 }
-
 const updateStatus = (state) => {
-
   let currentStatus = false
   let unreconciled = {}
   const properties = {}
 
   // PENDING status
   state.expectedParties.forEach((expPartyName) => {
-
-    const payloadArray = Immutable.getIn(state, ['parties', expPartyName])
+    const payloadArray = state.getIn(['parties', expPartyName])
 
     if (payloadArray.length === 0) {
       currentStatus = statusTypes.PENDING
     }
-
   })
 
   // UNRECONCILED status
   if(!currentStatus){
-
     state.expectedParties.forEach((expPartyName) => {
-
-      const payloadArray = Immutable.getIn(state, ['parties', expPartyName])
+      const payloadArray = state.getIn(['parties', expPartyName])
       const payload = payloadArray[payloadArray.length - 1]
-
       const schema = getSchema(expPartyName)
-
       const reconcileResult = udoReconcile(payload.data, schema.reconcileCriteria)
 
       if (!reconcileResult.reconciled) {
-
         const reason = {}
         reason[expPartyName] = reconcileResult.reason
-
         state.expectedParties.forEach((partyName) => {
-
           if (partyName != expPartyName) {
             properties[partyName] = reason
           }
-
         })
 
         currentStatus = statusTypes.UNRECONCILED
         unreconciled = {properties: properties}
-
       }
-
     })
-
   }
 
   // INVALID status
   if(!currentStatus){
-
     state.expectedParties.forEach((expPartyName) => {
-
-      const payloadArray = Immutable.getIn(state, ['parties', expPartyName])
+      const payloadArray = state.getIn(['parties', expPartyName])
       const payload = payloadArray[payloadArray.length - 1]
-
       const schema = getSchema(expPartyName)
-
       const validateResult = udoValidate(payload.data, schema.dataSchema)
 
       if (!validateResult) {
         currentStatus = statusTypes.INVALID
       }
-
     })
-
   }
 
   // AUTO_RECONCILED status
@@ -207,90 +176,78 @@ const updateStatus = (state) => {
     currentStatus = statusTypes.AUTO_RECONCILED
   }
 
-  let updateStatus = Immutable.setIn(state, ['status'], currentStatus)
-  updateStatus = Immutable.setIn(updateStatus, ['unreconciled'], unreconciled)
+  let updateStatus = state.setIn(['status'], currentStatus)
+                          .setIn(['unreconciled'], unreconciled)
 
   return updateStatus
-
 }
 
+const initialState = Immutable.from({
+  parties: {},
+  expectedParties: [],
+  status: '',
+  unreconciled: {},
+  versions: 0,
+})
 const reducer = (state = initialState, action) => {
-
-  const status =  Immutable.getIn(state, ['status'])
-
+  const status =  state.getIn(['status'])
   switch (action.type) {
-
     case actionTypes.INITIALIZE: {
-
       let parties = {}
       let expectedParties = []
 
       action.payload.forEach((partyName) => {
-
         parties[partyName] = []
         expectedParties.push(partyName)
-
       })
-      const setParties = Immutable.setIn(state, ['parties'], parties)
-      const setExpectedParties = Immutable.setIn(setParties, ["expectedParties"], expectedParties)
+      const updateState = state.setIn(['parties'], parties)
+                                .setIn(["expectedParties"], expectedParties)
 
-      return updateStatus(setExpectedParties)
-
+      return updateStatus(updateState)
     }
-    
+
     case actionTypes.PROPOSE: {
-
-      if (status == statusTypes.IRRECONCILABLE || _.indexOf(state.expectedParties, action.payload.partyName) === -1) return
+      if (status == statusTypes.IRRECONCILABLE || _.indexOf(state.expectedParties, action.payload.partyName) === -1) return state
       else {
-        const version = Immutable.getIn(state, ['versions'])
+        const version = state.getIn(['versions'])
         const payload = {
-
           version: version + 1,
           timestamp: action.payload.timestamp,
           comments: action.payload.comments,
           data: action.payload.udoData,
-
         }
-        var party = Immutable.asMutable(state.parties[action.payload.partyName])
+        let party = state.parties[action.payload.partyName].asMutable()
         party.push(payload)
 
-        let updateState = Immutable.setIn(state, ['parties', action.payload.partyName], party)
-        updateState = Immutable.update(updateState, ['versions'], version => version + 1)
+        const updateState = state.setIn(['parties', action.payload.partyName], party)
+                                  .update(['versions'], version => version + 1)
 
         return updateStatus(updateState)
       }
-
     }
 
     case actionTypes.APPROVE: {
+      const partyName = action.payload.partyName
 
-      const apprPartyName = action.payload.partyName
-
-      if (status == statusTypes.IRRECONCILABLE || status == statusTypes.INVALID || _.indexOf(state.expectedParties, apprPartyName) === -1) return
+      if (status == statusTypes.IRRECONCILABLE || status == statusTypes.INVALID || _.indexOf(state.expectedParties, partyName) === -1) return state
       else {
-
-        const version = Immutable.getIn(state, ['versions'])
-        const payloadArray = Immutable.getIn(state, ['parties', apprPartyName])
+        const version = state.getIn(['versions'])
+        const payloadArray = state.getIn(['parties', partyName])
         const lastPayload = payloadArray[payloadArray.length - 1]
         const payload = {
-
           version: version + 1,
           timestamp: action.payload.timestamp,
           comments: action.payload.comments,
           data: lastPayload.data,
-
         }
 
-        const unreconciled = Immutable.asMutable(state.unreconciled.properties)
+        const unreconciled = state.unreconciled.properties.asMutable()
         let properties = unreconciled
-
         for (key in unreconciled) {
-
-          if (key != apprPartyName) {
-
+          if (key != partyName) {
             let isEmpty = true
             for (let subKey in unreconciled[key]) {
-              if (subKey === apprPartyName) {
+              if (subKey === partyName) {
                 delete properties[key]
               } else {
                 isEmpty = false
@@ -299,65 +256,62 @@ const reducer = (state = initialState, action) => {
             if (isEmpty) {
               delete properties[key]
             }
-
           }
-
         }
         if (Object.keys(properties).length === 0) {
-          var party = Immutable.asMutable(state.parties[apprPartyName])
+          var party = state.parties[partyName].asMutable()
           party.push(payload)
-          let updateState = Immutable.setIn(state, ['parties', apprPartyName], party)
-          updateState = Immutable.setIn(updateState, ['unreconciled'], {})
-          updateState = Immutable.update(updateState, ['versions'], version => version + 1)
-          updateState = Immutable.setIn(updateState, ['status'], statusTypes.USER_RECONCILED)
+          const updateState = state.setIn(['parties', partyName], party)
+                                    .setIn(['unreconciled'], {})
+                                    .update(['versions'], version => version + 1)
+                                    .setIn(['status'], statusTypes.USER_RECONCILED)
           return updateState
         }
         else {
-          var party = Immutable.asMutable(state.parties[apprPartyName])
+          var party = state.parties[partyName].asMutable()
           party.push(payload)
-          let updateState = Immutable.setIn(state, ['parties', apprPartyName], party)
-          updateState = Immutable.setIn(updateState, ['unreconciled', 'properties'], properties)
-          updateState = Immutable.update(updateState, ['versions'], version => version + 1)
+          let updateState = state.setIn(['parties', partyName], party)
+                                  .setIn(['unreconciled', 'properties'], properties)
+                                  .update(['versions'], version => version + 1)
 
           return updateState
         }
 
       }
-
     }
 
     case actionTypes.ABANDON: {
-
       if (_.indexOf(state.expectedParties, action.payload.partyName) > -1) {
-        let updateState = Immutable.setIn(state, ['status'], statusTypes.IRRECONCILABLE)
-        updateState = Immutable.setIn(updateState, ['unreconciled', 'reason'], action.payload.reason)
+        let updateState = state.setIn(['status'], statusTypes.IRRECONCILABLE)
+                                .setIn(['unreconciled', 'reason'], action.payload.reason)
 
         return updateState
-      
-      } else return
-
+      } else return state
     }
 
     case actionTypes.UNMATCH: {
-
       let hasManyUDO = false
-
       state.expectedParties.forEach((partyName) => {
-        const payloadArray = Immutable.getIn(state, ["parties", partyName])
+        const payloadArray = state.getIn(["parties", partyName])
         if (payloadArray && payloadArray.length > 1) {
           hasManyUDO = true
         }
       })
-
-      if (status == statusTypes.IRRECONCILABLE || hasManyUDO) return
+      if (status == statusTypes.IRRECONCILABLE || hasManyUDO) return state
       else {
-        // action.resubmit()
-      }
+        const { resubmit } = udoInstanceManager.actions
+        let store = createStore(udoInstanceManager.reducer)
 
+        store.dispatch(resubmit(state))
+        if(Object.keys(store.getState()).length > 0){
+          return {}
+        }
+        else return state
+      }
     }
 
     default:
-      return
+      return state
   }
 }
 
